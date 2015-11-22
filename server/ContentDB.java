@@ -6,20 +6,35 @@ import java.util.List;
 import java.util.ArrayList;
 import myTube.Content;
 
+/**
+ * Manages the DB that stores the Contents of the Application
+ *
+ * @author Meritxell Jordana, Marc Sanchez
+ */
 public class ContentDB {
 
     private Connection db;
 
+    /**
+     * Creates a ContentDB and connects to dbName
+     *
+     * @param dbName name of sqlite database
+     */
     public ContentDB(String dbName) {
         connect(dbName);
     }
 
+    /**
+     * Connects to the specified DB
+     *
+     * @param dbName name of sqlite database
+     */
     public void connect(String dbName) {
         try {
             Class.forName("org.sqlite.JDBC");
             db = DriverManager.getConnection("jdbc:sqlite:" + dbName);
             db.setAutoCommit(false);
-        } catch (SQLException | ClassNotFoundException ex) {
+        } catch (Exception ex) {
             ColoredString.printlnError("Can not connect to DB " + dbName);
             System.exit(1);
         }
@@ -27,6 +42,9 @@ public class ContentDB {
         ColoredString.printlnSuccess("Server connected to DB " + dbName);
     }
 
+    /**
+     * Disconnects from the DB
+     */
     public void disconnect() {
         try {
             db.close();
@@ -51,6 +69,12 @@ public class ContentDB {
         }
     }
 
+    /**
+     * Get a Content from key or null if not exist
+     *
+     * @param key key of the Content
+     * @return Content with specified key
+     */
     public Content getContentFromKey(int key) {
         Content c = null;
         try {
@@ -69,6 +93,12 @@ public class ContentDB {
         return c;
     }
 
+    /**
+     * Get a Content from matching title or null if not exist
+     *
+     * @param title title of the Content
+     * @return Content matching title
+     */
     public Content getContentFromTitle(String title) {
         Content c = null;
         try {
@@ -89,6 +119,12 @@ public class ContentDB {
         return c;
     }
 
+    /**
+     * Get all Contents with a title that matches a keyword
+     *
+     * @param keyword keyword used to search Contents
+     * @return list of matching Contents
+     */
     public List<Content> getContentsFromKeyword(String keyword) {
         List<Content> contents = new ArrayList<Content>();
         try {
@@ -109,6 +145,14 @@ public class ContentDB {
         return contents;
     }
 
+    /**
+     * Upload a new content to the Server and returns a Content object or null
+     * if the Content can't be added
+     *
+     * @param title title of the Content
+     * @param description description of the Content
+     * @return the added Content
+     */
     public Content addContent(String title, String description) {
         try {
             Statement stmt = db.createStatement();

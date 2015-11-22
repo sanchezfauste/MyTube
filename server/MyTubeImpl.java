@@ -7,18 +7,26 @@ import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
 import myTube.Content;
+import mobileAgent.MobileAgent;
 import myTube.MyTube;
 import myTube.MyTubeCallback;
 
+/**
+ * Functions that the Server offers to the Clients
+ *
+ * @author Meritxell Jordana, Marc Sanchez
+ */
 public class MyTubeImpl extends UnicastRemoteObject implements MyTube {
 
     private static Set<MyTubeCallback> callbackObjects;
-    private ContentDB contents;
+    private final ContentDB contents;
 
-    public MyTubeImpl() throws RemoteException {
-        this("contents.sqlite");
-    }
-
+    /**
+     * Creates a MyTubeImpl instance
+     *
+     * @param dbName name of sqlite database file
+     * @throws RemoteException
+     */
     public MyTubeImpl(String dbName) throws RemoteException {
         super();
         callbackObjects = new HashSet<MyTubeCallback>();
@@ -99,9 +107,24 @@ public class MyTubeImpl extends UnicastRemoteObject implements MyTube {
         }
     }
 
+    /**
+     * Notifies the registered Clients that the Server stops
+     */
     public void exit() {
         notifyAllServerStopped();
         contents.disconnect();
+    }
+
+    @Override
+    public void sendAgent(MobileAgent agent) throws RemoteException {
+        ColoredString.printlnPurple("[SERVER]: Welcome agent " + agent.getName());
+        agent.printVisitedHosts();
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException ex) {
+            ColoredString.printlnError("Thread can't sleep");
+        }
+        agent.execute();
     }
 
 }

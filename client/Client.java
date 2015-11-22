@@ -1,6 +1,10 @@
 package client;
 
 import coloredString.ColoredString;
+import itineraryStrategy.ItineraryStrategy;
+import itineraryStrategy.RandomStrategy;
+import itineraryStrategy.ReverseStrategy;
+import itineraryStrategy.SequentialStrategy;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.RemoteException;
@@ -8,11 +12,16 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.io.IOException;
-import java.rmi.NotBoundException;
 import myTube.Content;
+import mobileAgent.MobileAgent;
 import myTube.MyTube;
 import myTube.MyTubeCallback;
 
+/**
+ * Represents a Client of MyTube Application
+ *
+ * @author Meritxell Jordana, Marc Sanchez
+ */
 public class Client {
 
     private MyTube stub;
@@ -21,17 +30,26 @@ public class Client {
     private final String host;
     private final int port;
     private final String registryName;
+    private final String registryURL;
 
-    public Client(String host, int port) {
-        this(host, port, "MyTube");
-    }
-
+    /**
+     * Creates a Client object
+     *
+     * @param host host of the Server
+     * @param port port of the Server
+     * @param registryName name of the registered service on RMI Registry
+     */
     public Client(String host, int port, String registryName) {
         this.host = host;
         this.port = port;
         this.registryName = registryName;
+        registryURL = "rmi://" + host + ":" + port
+                + "/" + registryName;
     }
 
+    /**
+     * Connects the Client to the specified Server
+     */
     public void connectToTheServer() {
         try {
             System.setProperty("java.security.policy", "security.policy");
@@ -40,18 +58,19 @@ public class Client {
             }
             registry = LocateRegistry.getRegistry(host, port);
             stub = (MyTube) registry.lookup(registryName);
-            String registryURL = "rmi://" + host + ":" + port
-                    + "/" + registryName;
             callbackObject = new MyTubeCallbackImpl();
             stub.addCallback(callbackObject);
             ColoredString.printlnSuccess("MyTube client connected on: "
                     + registryURL);
-        } catch (RemoteException | NotBoundException ex) {
+        } catch (Exception ex) {
             ColoredString.printlnError("Can not connect to the server");
             System.exit(1);
         }
     }
 
+    /**
+     * Disconnects the Client from the Server
+     */
     public void disconnectFromTheServer() {
         try {
             stub.removeCallback(callbackObject);
@@ -60,6 +79,12 @@ public class Client {
         }
     }
 
+    /**
+     * Get a Content from key or null if not exist
+     *
+     * @param key key of the Content
+     * @return Content with specified key
+     */
     public Content getContentFromKey(int key) {
         try {
             return stub.getContentFromKey(key);
@@ -69,6 +94,12 @@ public class Client {
         }
     }
 
+    /**
+     * Get a Content from matching title or null if not exist
+     *
+     * @param title title of the Content
+     * @return Content matching title
+     */
     public Content getContentFromTitle(String title) {
         try {
             return stub.getContentFromTitle(title);
@@ -78,6 +109,12 @@ public class Client {
         }
     }
 
+    /**
+     * Get all Contents with a title that matches a keyword
+     *
+     * @param keyword keyword used to search Contents
+     * @return list of matching Contents
+     */
     public List<Content> getContentsFromKeyword(String keyword) {
         try {
             return stub.getContentsFromKeyword(keyword);
@@ -87,6 +124,14 @@ public class Client {
         }
     }
 
+    /**
+     * Upload a new content to the Server and returns a Content object or null
+     * if the Content can't be added
+     *
+     * @param title title of the Content
+     * @param description description of the Content
+     * @return the added Content
+     */
     public Content uploadContent(String title, String description) {
         try {
             return stub.uploadContent(title, description);
@@ -99,11 +144,16 @@ public class Client {
     public static void main(String[] args) {
 
         if (args.length < 2) {
-            System.err.println("Parameters: <host> + <port>");
+            System.err.println("Parameters: <host> <port> "
+                    + "[registryName] [nodesFile]");
             System.exit(1);
         }
 
-        final Client client = new Client(args[0], Integer.parseInt(args[1]));
+        String registryName = (args.length < 3) ? "MyTube" : args[2];
+        String nodesFile = (args.length < 4) ? "nodes.data" : args[3];
+
+        final Client client = new Client(args[0], Integer.parseInt(args[1]),
+                registryName);
 
         client.connectToTheServer();
 
@@ -118,6 +168,7 @@ public class Client {
             System.out.println("Press 3 to upload new digital content with its description");
             System.out.println("Press 4 to search matching contents with the title");
             System.out.println("Press 5 to exit");
+            System.out.println("Press 6 to run the agent");
 
             try {
 
@@ -183,6 +234,31 @@ public class Client {
                         ColoredString.printlnError("BufferedReader can't be closed");
                     }
                     System.exit(0);
+
+                } else if (option == 6) {
+                    System.out.println("Enter the name of the Agent:");
+                    String agentName = sc.readLine();
+                    System.out.println("What strategy do you want to use?");
+                    System.out.println("1 - Sequential Itinerary");
+                    System.out.println("2 - Random Itinerary");
+                    System.out.println("3 - Reverse Itinerary");
+                    ItineraryStrategy strategy;
+                    switch (Integer.parseInt(sc.readLine())) {
+                        case 2:
+                            strategy = new RandomStrategy();
+                            break;
+                        case 3:
+                            strategy = new ReverseStrategy();
+                            break;
+                        default:
+                            strategy = new SequentialStrategy();
+                            break;
+                    }
+                    ColoredString.printlnPurple("[CLIENT]: Goodbye agent "
+                            + agentName);
+                    new MobileAgent(agentName, nodesFile, strategy).execute();
+                    ColoredString.printlnPurple("[CLIENT]: Congratulations agent "
+                            + agentName);
 
                 } else {
                     ColoredString.printlnWarning("Wrong number of option entered");
