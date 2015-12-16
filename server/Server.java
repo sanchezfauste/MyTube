@@ -1,12 +1,17 @@
 package server;
 
 import coloredString.ColoredString;
-import java.rmi.NotBoundException;
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import mobileAgent.Node;
 
+/**
+ * Represents a Server of MyTube Application
+ *
+ * @author Meritxell Jordana, Marc Sanchez
+ */
 public class Server {
 
     private MyTubeImpl stub;
@@ -14,26 +19,44 @@ public class Server {
     private final String host;
     private final int port;
     private final String registryName;
+    private final String registryURL;
+    private final String dbName;
+    private final String wsConfigFile;
 
-    public Server(String host, int port) {
-        this(host, port, "MyTube");
-    }
-
-    public Server(String host, int port, String registryName) {
+    /**
+     * Creates a Server instance
+     *
+     * @param host the server waits for client connections on this IP
+     * @param port port where the server listens for client petitions
+     * @param registryName name of the registered service on RMI Registry
+     * @param dbName name of sqlite database file
+     * @param wsConfigFile config file of web service
+     */
+    public Server(String host, int port, String registryName,
+            String dbName, String wsConfigFile) {
         this.host = host;
         this.port = port;
         this.registryName = registryName;
+        registryURL = "rmi://" + host + ":" + port
+                + "/" + registryName;
+        this.dbName = dbName;
+        this.wsConfigFile = wsConfigFile;
     }
 
     public static void main(String args[]) {
 
-        if (args.length < 1) {
-            System.err.println("Parameters: <port> + [host]");
+        if (args.length < 2) {
+            System.err.println("Parameters: <host> <port> "
+                    + "[registryName] [dbName] [wsConfigFile]");
             System.exit(1);
         }
 
-        final Server s = new Server((args.length < 2) ? "localhost" : args[1],
-                Integer.parseInt(args[0]));
+        String registryName = (args.length < 3) ? "MyTube" : args[2];
+        String dbName = (args.length < 4) ? "contents.sqlite" : args[3];
+        String wsConfigFile = (args.length < 5) ? "ws.data" : args[4];
+
+        final Server s = new Server(args[0], Integer.parseInt(args[1]),
+                registryName, dbName, wsConfigFile);
 
         final Thread mainThread = Thread.currentThread();
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -54,6 +77,9 @@ public class Server {
 
     }
 
+    /**
+     * Runs the Server
+     */
     public void runServer() {
         try {
             System.setProperty("java.rmi.server.hostname", host);
@@ -61,10 +87,9 @@ public class Server {
             if (System.getSecurityManager() == null) {
                 System.setSecurityManager(new SecurityManager());
             }
-            stub = new MyTubeImpl();
+            stub = new MyTubeImpl(dbName, new Node(host, port, registryName),
+                    wsConfigFile);
             registry = getRegistry();
-            String registryURL = "rmi://" + host + ":" + port
-                    + "/" + registryName;
             registry.rebind(registryName, stub);
             ColoredString.printlnInfo("MyTube Server ready on: " + registryURL);
         } catch (Exception ex) {
@@ -72,6 +97,9 @@ public class Server {
         }
     }
 
+    /**
+     * Stopps the Server
+     */
     public void stopServer() {
         if (stub != null) {
             stub.exit();
@@ -80,9 +108,8 @@ public class Server {
             registry.unbind(registryName);
             UnicastRemoteObject.unexportObject(stub, true);
             ColoredString.printlnSuccess("Server stopped correctly");
-        } catch (RemoteException | NotBoundException ex) {
-            ColoredString.printlnError("Server failed on unbind: "
-                    + ex.toString());
+        } catch (Exception ex) {
+            ColoredString.printlnError("Server failed on stop");
         }
     }
 

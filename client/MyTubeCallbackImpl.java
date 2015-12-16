@@ -6,9 +6,20 @@ import java.rmi.RemoteException;
 import myTube.Content;
 import myTube.MyTubeCallback;
 
+/**
+ * Class used to notify the addition of new contents to the Clients and that the
+ * Server ends his execution
+ *
+ * @author Meritxell Jordana, Marc Sanchez
+ */
 public class MyTubeCallbackImpl extends UnicastRemoteObject
         implements MyTubeCallback {
 
+    /**
+     * Create a MyTubeCallbackImpl
+     *
+     * @throws RemoteException if can't create a new instance
+     */
     public MyTubeCallbackImpl() throws RemoteException {
         super();
     }
